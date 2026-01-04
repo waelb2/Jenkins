@@ -30,9 +30,12 @@ pipeline {
                 always {
                     // Archive JUnit results
                     junit '**/build/test-results/test/*.xml'
-                    // Generate Cucumber reports
-                    sh './gradlew cucumberReports'
-                    cucumber fileIncludePattern: '**/cucumber.json'
+
+                    // Generate Cucumber report
+                    sh './gradlew generateCucumberReports'
+
+                    // Publish Cucumber HTML report in Jenkins
+                    cucumber buildStatus: 'UNSTABLE', fileIncludePattern: '**/build/reports/cucumber/cucumber.json', jsonReportDirectory: 'build/reports/cucumber/html'
                 }
             }
         }
@@ -40,7 +43,7 @@ pipeline {
         // ===========================
         stage('Code Analysis') {
             steps {
-                sh './gradlew sonar'
+                sh './gradlew sonar -Psonar.skipCompile=true'
             }
         }
 
@@ -48,7 +51,7 @@ pipeline {
         stage('Code Quality') {
             steps {
                 script {
-                    // Check SonarQube Quality Gate
+                    // Wait for SonarQube Quality Gate
                     def qg = waitForQualityGate()
                     if (qg.status != 'OK') {
                         error "Pipeline stopped: Quality Gate failed!"
@@ -61,10 +64,7 @@ pipeline {
         stage('Build') {
             steps {
                 script {
-                    // Build JAR
-                    sh './gradlew build'
-                    // Generate JavaDocs
-                    sh './gradlew generateDocs'
+                    sh './gradlew build generateDocs'
                 }
             }
             post {
@@ -87,23 +87,17 @@ pipeline {
     post {
         success {
             script {
-                // Slack notification
                 slackSend(channel: '#general', color: 'good', message: "✅ Build and deployment successful: ${env.JOB_NAME} #${env.BUILD_NUMBER}")
-                // Email notification
-                mail to: 'lw_bouguessa@esi.dz',
-                     subject: "Build Success: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                     body: "The project has been built and deployed successfully.\nCheck Jenkins for details: ${env.BUILD_URL}"
+                // You can leave email for later once SMTP is configured
+                // mail(...)
             }
         }
         failure {
             script {
-                // Slack notification
                 slackSend(channel: '#general', color: 'danger', message: "❌ Build failed: ${env.JOB_NAME} #${env.BUILD_NUMBER}")
-                // Email notification
-                mail to: 'lw_bouguessa@esi.dz',
-                     subject: "Build Failed: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
-                     body: "The build or deployment failed.\nCheck Jenkins for details: ${env.BUILD_URL}"
+                // mail(...)
             }
         }
     }
 }
+

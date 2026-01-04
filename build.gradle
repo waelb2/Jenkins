@@ -27,6 +27,28 @@ cucumberReports {
     reports = files('build/reports/cucumber/cucumber.json')
 }
 
+// Task to generate Cucumber HTML report
+tasks.register('generateCucumberReport') {
+    group = 'Verification'
+    description = 'Generates the Cucumber HTML report'
+
+    dependsOn test // make sure tests run first
+
+    doLast {
+        def jsonReport = file('build/reports/cucumber/cucumber.json')
+        if (!jsonReport.exists()) {
+            println "Cucumber JSON report not found! Make sure tests are generating it."
+        } else {
+            // Use the plugin to generate HTML
+            com.github.spacialcircumstances.gradlecucumber.reporting.CucumberReporting.generateReport(
+                jsonReport,
+                file('build/reports/cucumber/html')
+            )
+            println "Cucumber report generated at build/reports/cucumber/html"
+        }
+    }
+}
+
 jacoco {
     toolVersion = "0.8.10" // Version actuelle de JaCoCo
 }
