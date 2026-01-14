@@ -1,103 +1,174 @@
-pipeline {
-    agent any
+plugins {
+    id 'java'
+    id "com.github.spacialcircumstances.gradle-cucumber-reporting" version "0.1.25"
+    id "jacoco"
+    id 'org.sonarqube' version '4.4.0.3356'
+    id 'maven-publish'
+    id("io.github.oleksiiparf.slack-webhook") version "1.0.0"
+    id("de.zebrajaeger.sendMail") version "0.1.1"
+}
 
-    tools {
-        jdk 'JDK17'
+group = 'com.example'
+version = '1.0-Wael'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testImplementation 'io.cucumber:cucumber-java:6.0.0'
+    testImplementation 'io.cucumber:cucumber-junit:6.0.0'
+    testImplementation 'junit:junit:4.12'
+}
+
+// -----------------------------
+// Cucumber Reports
+// -----------------------------
+cucumberReports {
+    outputDir = file('build/reports/cucumber/html')
+    buildId = '0'
+    reports = files('build/reports/cucumber/cucumber.json')
+}
+
+// -----------------------------
+// JaCoCo
+// -----------------------------
+jacoco {
+    toolVersion = "0.8.10"
+}
+
+jacocoTestReport {
+    dependsOn test
+    reports {
+        xml.required.set(true)
+        csv.required.set(false)
+        html.required.set(true)
+        html.outputLocation.set(layout.buildDirectory.dir("reports/jacoco"))
     }
+}
 
-    environment {
-        SLACK_WEBHOOK = 'https://hooks.slack.com/services/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'
-        MAVEN_REPO_URL = 'https://mymavenrepo.com/repo/cEmjfkxugPlzLxXg1A2B/'
+// -----------------------------
+// SonarQube
+// -----------------------------
+sonarqube {
+    properties {
+        property "sonar.projectKey", "TP5"
+        property "sonar.host.url", "http://localhost:9000"
+        property "sonar.login", "293eb0ec63b776e8dbe00bedc08a2103ad6628db"
+        property "sonar.sources", "src/main/java"
+        property "sonar.tests", "src/test/java"
+        property "sonar.java.binaries", "build/classes"
+        property "sonar.coverage.jacoco.xmlReportPaths", "build/reports/jacoco/test/jacocoTestReport.xml"
     }
+}
 
-    stages {
-
-        // ===========================
-        stage('Checkout') {
-            steps {
-                checkout scm
-            }
-        }
-
-        // ===========================
-        stage('Test') {
-            steps {
-                script {
-                    sh './gradlew clean test'
-                }
-            }
-            post {
-                always {
-                    // Archive JUnit results
-                    junit '**/build/test-results/test/*.xml'
-
-                    // Generate Cucumber report
-                    sh './gradlew generateCucumberReports'
-
-                    // Publish Cucumber HTML report in Jenkins
-                    cucumber buildStatus: 'UNSTABLE', fileIncludePattern: '**/build/reports/cucumber/cucumber.json', jsonReportDirectory: 'build/reports/cucumber/html'
-                }
-            }
-        }
-
-        // ===========================
-        stage('Code Analysis') {
-            steps {
-                sh './gradlew sonar -Psonar.skipCompile=true'
-            }
-        }
-
-        // ===========================
-        stage('Code Quality') {
-            steps {
-                script {
-                    // Wait for SonarQube Quality Gate
-                    def qg = waitForQualityGate()
-                    if (qg.status != 'OK') {
-                        error "Pipeline stopped: Quality Gate failed!"
-                    }
-                }
-            }
-        }
-
-        // ===========================
-        stage('Build') {
-            steps {
-                script {
-                    sh './gradlew build generateDocs'
-                }
-            }
-            post {
-                always {
-                    archiveArtifacts artifacts: 'build/libs/*.jar', fingerprint: true
-                    archiveArtifacts artifacts: 'build/docs/**', fingerprint: true
-                }
-            }
-        }
-
-        // ===========================
-        stage('Deploy') {
-            steps {
-                sh './gradlew publish'
-            }
+// -----------------------------
+// Maven Publish
+// -----------------------------
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+            groupId = 'wael'
+            artifactId = 'wael-library'
+            version = '1.0.0'
         }
     }
-
-    // ===========================
-    post {
-        success {
-            script {
-                slackSend(channel: '#general', color: 'good', message: "✅ Build and deployment successful: ${env.JOB_NAME} #${env.BUILD_NUMBER}")
-                // You can leave email for later once SMTP is configured
-                // mail(...)
-            }
-        }
-        failure {
-            script {
-                slackSend(channel: '#general', color: 'danger', message: "❌ Build failed: ${env.JOB_NAME} #${env.BUILD_NUMBER}")
-                // mail(...)
+    repositories {
+        maven {
+            name = "myrepo"
+            url = uri("https://mymavenrepo.com/repo/cEmjfkxugPlzLxXg1A2B/")
+            credentials {
+                username = "myMavenRepo"
+                password = "test0005"
             }
         }
     }
+}
+
+// -----------------------------
+// Generate Javadoc
+// -----------------------------
+tasks.register('generateDocs', Javadoc) {
+    group = 'Documentation'
+    description = 'Génère la documentation Java'
+    source = sourceSets.main.allJava
+    classpath = sourceSets.main.compileClasspath
+    destinationDir = file("$buildDir/docs")
+}
+
+// -----------------------------
+// Slack Notification
+// -----------------------------
+slack {
+    publishedPlugin {
+        webHook = System.getenv("https://hooks.slack.com/services/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") ?: "https://hooks.slack.com/services/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"
+        attachment {
+            fallback = "New version successfully published."
+            pretext = "New version successfully published."
+            color = "good"
+            field {
+                title = "Module"
+                value = project.name
+                shortValue = true
+            }
+            field {
+                title = "Version"
+                value = project.version
+                shortValue = true
+            }
+        }
+    }
+}
+
+// -----------------------------
+// Email Notification
+// -----------------------------
+sendMail {
+    smtpServer {
+        host "smtp.gmail.com"
+        port 587
+        user System.getenv("EMAIL_USER") ?: "lw_bouguessa@esi.dz"
+        password System.getenv("EMAIL_PASS") ?: "srwe nrpj swfv qvzg"
+    }
+    mail {
+        from System.getenv("EMAIL_USER") ?: "lw_bouguessa@esi.dz"
+        to System.getenv("EMAIL_TO") ?: "lw_bouguessa@esi.dz"
+        subject = "Build Notification: ${project.name} ${project.version}"
+        body = "Hello! The build for project ${project.name} (version ${project.version}) has completed."
+    }
+}
+
+// -----------------------------
+// Test configuration
+// -----------------------------
+test {
+    useJUnit()
+    systemProperty "cucumber.plugin", "json:build/reports/cucumber/cucumber.json"
+    finalizedBy jacocoTestReport
+}
+
+// -----------------------------
+// Sonar task depends on test + jacoco
+// -----------------------------
+tasks.named('sonar') {
+    dependsOn test, jacocoTestReport
+}
+
+// -----------------------------
+// Always run Slack + Email notifications after build or publish
+// -----------------------------
+tasks.named("build") {
+    finalizedBy(
+        tasks.named("postPublishedPluginToSlack"),
+        tasks.named("sendMail")
+    )
+}
+
+tasks.named("publish") {
+    finalizedBy(
+        tasks.named("postPublishedPluginToSlack"),
+        tasks.named("sendMail")
+    )
 }
 

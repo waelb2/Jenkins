@@ -90,7 +90,8 @@ tasks.register('generateDocs', Javadoc) {
 // Slack webhook notification
 slack {
     publishedPlugin {
-        webHook = "https://hooks.slack.com/services/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"
+        // Use environment variable for security
+        webHook = "https://hooks.slack.com/services/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"
         attachment {
             fallback = "New version successfully published."
             pretext = "New version successfully published."
@@ -123,13 +124,13 @@ sendMail {
     smtpServer {
         host "smtp.gmail.com"
         port 587
-        user "lw_bouguessa@esi.dz"
-        password "srwe nrpj swfv qvzg"
+        user System.getenv("EMAIL_USER") ?: "lw_bouguessa@esi.dz"
+        password System.getenv("EMAIL_PASS") ?: "srwe nrpj swfv qvzg"
     }
     mail {
-        from "lw_bouguessa@esi.dz"
-        to "lh_boulacheb@esi.dz"
-        subject = "TP5 Deployment"
+        from System.getenv("EMAIL_USER") ?: "lw_bouguessa@esi.dz"
+        to System.getenv("EMAIL_TO") ?: "lw_bouguessa@esi.dz"
+        subject = "Jenkins Deployment"
         body = "Hello! The library has been deployed."
     }
 }
@@ -146,7 +147,19 @@ tasks.named('sonar') {
     dependsOn test, jacocoTestReport
 }
 
-// Publish tasks triggers Slack and email
-publish.finalizedBy(tasks.named("postPublishedPluginToSlack"))
-publish.finalizedBy(tasks.named("sendMail"))
+// Run Slack/email after any successful build
+tasks.named("build") {
+    finalizedBy(
+        tasks.named("postPublishedPluginToSlack"),
+        tasks.named("sendMail")
+    )
+}
+
+// Optional: also after publish if you still use it
+tasks.named("publish") {
+    finalizedBy(
+        tasks.named("postPublishedPluginToSlack"),
+        tasks.named("sendMail")
+    )
+}
 
