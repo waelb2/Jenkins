@@ -1,174 +1,241 @@
-plugins {
-    id 'java'
-    id "com.github.spacialcircumstances.gradle-cucumber-reporting" version "0.1.25"
-    id "jacoco"
-    id 'org.sonarqube' version '4.4.0.3356'
-    id 'maven-publish'
-    id("io.github.oleksiiparf.slack-webhook") version "1.0.0"
-    id("de.zebrajaeger.sendMail") version "0.1.1"
-}
+pipeline {
+    agent any
 
-group = 'com.example'
-version = '1.0-Wael'
-
-repositories {
-    mavenCentral()
-}
-
-dependencies {
-    testImplementation 'io.cucumber:cucumber-java:6.0.0'
-    testImplementation 'io.cucumber:cucumber-junit:6.0.0'
-    testImplementation 'junit:junit:4.12'
-}
-
-// -----------------------------
-// Cucumber Reports
-// -----------------------------
-cucumberReports {
-    outputDir = file('build/reports/cucumber/html')
-    buildId = '0'
-    reports = files('build/reports/cucumber/cucumber.json')
-}
-
-// -----------------------------
-// JaCoCo
-// -----------------------------
-jacoco {
-    toolVersion = "0.8.10"
-}
-
-jacocoTestReport {
-    dependsOn test
-    reports {
-        xml.required.set(true)
-        csv.required.set(false)
-        html.required.set(true)
-        html.outputLocation.set(layout.buildDirectory.dir("reports/jacoco"))
+    options {
+        skipStagesAfterUnstable()
     }
-}
 
-// -----------------------------
-// SonarQube
-// -----------------------------
-sonarqube {
-    properties {
-        property "sonar.projectKey", "TP5"
-        property "sonar.host.url", "http://localhost:9000"
-        property "sonar.login", "293eb0ec63b776e8dbe00bedc08a2103ad6628db"
-        property "sonar.sources", "src/main/java"
-        property "sonar.tests", "src/test/java"
-        property "sonar.java.binaries", "build/classes"
-        property "sonar.coverage.jacoco.xmlReportPaths", "build/reports/jacoco/test/jacocoTestReport.xml"
-    }
-}
+    stages {
+        stage('Test') {
+            steps {
+                echo "Phase Test: Lancement des tests unitaires"
+                bat 'gradlew.bat clean test'
 
-// -----------------------------
-// Maven Publish
-// -----------------------------
-publishing {
-    publications {
-        mavenJava(MavenPublication) {
-            from components.java
-            groupId = 'wael'
-            artifactId = 'wael-library'
-            version = '1.0.0'
+                echo "Archivage des résultats des tests unitaires"
+                junit 'build/test-results/test/*.xml'
+
+                echo "Génération des rapports de tests Cucumber"
+                script {
+                    try {
+                        bat 'gradlew.bat generateCucumberReports'
+                        publishHTML([
+                            allowMissing: true,
+                            alwaysLinkToLastBuild: true,
+                            keepAll: true,
+                            reportDir: 'build/reports/cucumber/html',
+                            reportFiles: 'overview-features.html',
+                            reportName: 'Cucumber Report'
+                        ])
+                    } catch (Exception e) {
+                        echo "Avertissement: Impossible de générer les rapports Cucumber: ${e.message}"
+                    }
+                }
+            }
         }
-    }
-    repositories {
-        maven {
-            name = "myrepo"
-            url = uri("https://mymavenrepo.com/repo/cEmjfkxugPlzLxXg1A2B/")
-            credentials {
-                username = "myMavenRepo"
-                password = "test0005"
+
+        stage('Code Analysis') {
+            steps {
+                echo "Analyse du code avec SonarQube"
+                withSonarQubeEnv('sonar') {
+                    bat 'gradlew.bat sonar'
+                }
+            }
+        }
+
+        stage('Code Quality') {
+            steps {
+                echo "Vérification des Quality Gates"
+                timeout(time: 2, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+
+        stage('Build') {
+            steps {
+                echo "Génération du Jar et de la documentation"
+                bat 'gradlew.bat jar javadoc'
+
+                echo "Archivage du fichier Jar"
+                archiveArtifacts artifacts: 'build/libs/*.jar', fingerprint: true
+
+                echo "Archivage de la documentation"
+                archiveArtifacts artifacts: 'build/docs/javadoc/**', fingerprint: true, allowEmptyArchive: true
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                echo "Déploiement du Jar sur Maven repo"
+                bat 'gradlew.bat publish'
             }
         }
     }
-}
 
-// -----------------------------
-// Generate Javadoc
-// -----------------------------
-tasks.register('generateDocs', Javadoc) {
-    group = 'Documentation'
-    description = 'Génère la documentation Java'
-    source = sourceSets.main.allJava
-    classpath = sourceSets.main.compileClasspath
-    destinationDir = file("$buildDir/docs")
-}
+    post {
+        always {
+            echo "Nettoyage et archivage des artefacts"
+        }
 
-// -----------------------------
-// Slack Notification
-// -----------------------------
-slack {
-    publishedPlugin {
-        webHook = System.getenv("https://hooks.slack.com/services/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") ?: "https://hooks.slack.com/services/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"
-        attachment {
-            fallback = "New version successfully published."
-            pretext = "New version successfully published."
-            color = "good"
-            field {
-                title = "Module"
-                value = project.name
-                shortValue = true
+        success {
+            echo "Pipeline terminé avec succès: Notification par mail et Slack"
+            script {
+                // Email (uses environment variables)
+                try {
+                    def emailUser = System.getenv('EMAIL_USER')
+                    def emailTo   = System.getenv('EMAIL_TO')
+                    if (emailUser && emailTo) {
+                        emailext(
+                            to: emailTo,
+                            subject: "✅ Pipeline Success: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                            body: """
+                                <h2>Pipeline exécuté avec succès</h2>
+                                <p><strong>Projet:</strong> ${env.JOB_NAME}</p>
+                                <p><strong>Build:</strong> #${env.BUILD_NUMBER}</p>
+                                <p><strong>Statut:</strong> SUCCESS</p>
+                                <p><strong>URL:</strong> ${env.BUILD_URL}</p>
+                                <p>Le déploiement a été effectué avec succès.</p>
+                            """,
+                            mimeType: 'text/html'
+                        )
+                        echo "✓ Email de succès envoyé"
+                    } else {
+                        echo "⚠️ Email non envoyé: variables EMAIL_USER ou EMAIL_TO manquantes"
+                    }
+                } catch (Exception e) {
+                    echo "✗ Erreur lors de l'envoi de l'email: ${e.message}"
+                }
+
+                // Slack (uses environment variable)
+                try {
+                    def slackWebhook = System.getenv('SLACK_WEBHOOK')
+                    if (slackWebhook) {
+                        slackSend(
+                            channel: '#ogl',
+                            color: 'good',
+                            message: """
+                                ✅ *Pipeline réussi*
+                                *Projet:* ${env.JOB_NAME}
+                                *Build:* #${env.BUILD_NUMBER}
+                                *Statut:* SUCCESS
+                                *Détails:* ${env.BUILD_URL}
+                            """.stripIndent()
+                        )
+                        echo "✓ Notification Slack envoyée"
+                    } else {
+                        echo "⚠️ Notification Slack non envoyée: variable SLACK_WEBHOOK manquante"
+                    }
+                } catch (Exception e) {
+                    echo "✗ Erreur lors de l'envoi Slack: ${e.message}"
+                }
             }
-            field {
-                title = "Version"
-                value = project.version
-                shortValue = true
+        }
+
+        failure {
+            echo "Pipeline échoué: Notification par mail et Slack"
+            script {
+                def emailUser = System.getenv('EMAIL_USER')
+                def emailTo   = System.getenv('EMAIL_TO')
+                def slackWebhook = System.getenv('SLACK_WEBHOOK')
+
+                if (emailUser && emailTo) {
+                    try {
+                        emailext(
+                            to: emailTo,
+                            subject: "❌ Pipeline Failure: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                            body: """
+                                <h2>Pipeline échoué</h2>
+                                <p><strong>Projet:</strong> ${env.JOB_NAME}</p>
+                                <p><strong>Build:</strong> #${env.BUILD_NUMBER}</p>
+                                <p><strong>Statut:</strong> ${currentBuild.currentResult}</p>
+                                <p><strong>URL:</strong> ${env.BUILD_URL}</p>
+                                <p>Veuillez consulter les logs pour plus de détails.</p>
+                            """,
+                            mimeType: 'text/html'
+                        )
+                        echo "✓ Email d'échec envoyé"
+                    } catch (Exception e) {
+                        echo "✗ Erreur lors de l'envoi de l'email: ${e.message}"
+                    }
+                } else {
+                    echo "⚠️ Email d'échec non envoyé: variables manquantes"
+                }
+
+                if (slackWebhook) {
+                    try {
+                        slackSend(
+                            channel: '#ogl',
+                            color: 'danger',
+                            message: """
+                                ❌ *Pipeline échoué*
+                                *Projet:* ${env.JOB_NAME}
+                                *Build:* #${env.BUILD_NUMBER}
+                                *Statut:* FAILURE
+                                *Détails:* ${env.BUILD_URL}console
+                                ⚠️ Consultez les logs pour plus d'informations
+                            """.stripIndent()
+                        )
+                        echo "✓ Notification Slack envoyée"
+                    } catch (Exception e) {
+                        echo "✗ Erreur lors de l'envoi Slack: ${e.message}"
+                    }
+                } else {
+                    echo "⚠️ Notification Slack d'échec non envoyée: variable SLACK_WEBHOOK manquante"
+                }
+            }
+        }
+
+        unstable {
+            echo "Pipeline instable: Notification par mail et Slack"
+            script {
+                def emailUser = System.getenv('EMAIL_USER')
+                def emailTo   = System.getenv('EMAIL_TO')
+                def slackWebhook = System.getenv('SLACK_WEBHOOK')
+
+                if (emailUser && emailTo) {
+                    try {
+                        emailext(
+                            to: emailTo,
+                            subject: "⚠️ Pipeline Unstable: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                            body: """
+                                <h2>Pipeline instable</h2>
+                                <p><strong>Projet:</strong> ${env.JOB_NAME}</p>
+                                <p><strong>Build:</strong> #${env.BUILD_NUMBER}</p>
+                                <p><strong>Statut:</strong> UNSTABLE</p>
+                                <p><strong>URL:</strong> ${env.BUILD_URL}</p>
+                            """,
+                            mimeType: 'text/html'
+                        )
+                        echo "✓ Email d'instabilité envoyé"
+                    } catch (Exception e) {
+                        echo "✗ Erreur lors de l'envoi de l'email: ${e.message}"
+                    }
+                } else {
+                    echo "⚠️ Email d'instabilité non envoyé: variables manquantes"
+                }
+
+                if (slackWebhook) {
+                    try {
+                        slackSend(
+                            channel: '#ogl',
+                            color: 'warning',
+                            message: """
+                                ⚠️ *Pipeline instable*
+                                *Projet:* ${env.JOB_NAME}
+                                *Build:* #${env.BUILD_NUMBER}
+                                *Statut:* UNSTABLE
+                                *Détails:* ${env.BUILD_URL}
+                            """.stripIndent()
+                        )
+                        echo "✓ Notification Slack envoyée"
+                    } catch (Exception e) {
+                        echo "✗ Erreur lors de l'envoi Slack: ${e.message}"
+                    }
+                } else {
+                    echo "⚠️ Notification Slack d'instabilité non envoyée: variable SLACK_WEBHOOK manquante"
+                }
             }
         }
     }
-}
-
-// -----------------------------
-// Email Notification
-// -----------------------------
-sendMail {
-    smtpServer {
-        host "smtp.gmail.com"
-        port 587
-        user System.getenv("EMAIL_USER") ?: "lw_bouguessa@esi.dz"
-        password System.getenv("EMAIL_PASS") ?: "srwe nrpj swfv qvzg"
-    }
-    mail {
-        from System.getenv("EMAIL_USER") ?: "lw_bouguessa@esi.dz"
-        to System.getenv("EMAIL_TO") ?: "lw_bouguessa@esi.dz"
-        subject = "Build Notification: ${project.name} ${project.version}"
-        body = "Hello! The build for project ${project.name} (version ${project.version}) has completed."
-    }
-}
-
-// -----------------------------
-// Test configuration
-// -----------------------------
-test {
-    useJUnit()
-    systemProperty "cucumber.plugin", "json:build/reports/cucumber/cucumber.json"
-    finalizedBy jacocoTestReport
-}
-
-// -----------------------------
-// Sonar task depends on test + jacoco
-// -----------------------------
-tasks.named('sonar') {
-    dependsOn test, jacocoTestReport
-}
-
-// -----------------------------
-// Always run Slack + Email notifications after build or publish
-// -----------------------------
-tasks.named("build") {
-    finalizedBy(
-        tasks.named("postPublishedPluginToSlack"),
-        tasks.named("sendMail")
-    )
-}
-
-tasks.named("publish") {
-    finalizedBy(
-        tasks.named("postPublishedPluginToSlack"),
-        tasks.named("sendMail")
-    )
 }
 
