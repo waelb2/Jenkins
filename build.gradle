@@ -77,6 +77,7 @@ publishing {
         }
     }
 }
+// just to test
 
 // Generate Javadoc
 tasks.register('generateDocs', Javadoc) {
