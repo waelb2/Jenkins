@@ -9,7 +9,7 @@ plugins {
 }
 
 group = 'com.example'
-version = '1.0-HichemBoulacheb'
+version = '1.0-Wael'
 
 repositories {
     mavenCentral()
@@ -21,62 +21,48 @@ dependencies {
     testImplementation 'junit:junit:4.12'
 }
 
+// Cucumber reports
 cucumberReports {
     outputDir = file('build/reports/cucumber/html')
     buildId = '0'
     reports = files('build/reports/cucumber/cucumber.json')
 }
 
-// Task to generate Cucumber HTML report
-tasks.register('generateCucumberReport') {
-    group = 'Verification'
-    description = 'Generates the Cucumber HTML report'
+// JaCoCo
+jacoco {
+    toolVersion = "0.8.10"
+}
 
-    dependsOn test // make sure tests run first
-
-    doLast {
-        def jsonReport = file('build/reports/cucumber/cucumber.json')
-        if (!jsonReport.exists()) {
-            println "Cucumber JSON report not found! Make sure tests are generating it."
-        } else {
-            // Use the plugin to generate HTML
-            com.github.spacialcircumstances.gradlecucumber.reporting.CucumberReporting.generateReport(
-                jsonReport,
-                file('build/reports/cucumber/html')
-            )
-            println "Cucumber report generated at build/reports/cucumber/html"
-        }
+jacocoTestReport {
+    dependsOn test
+    reports {
+        xml.required.set(true)
+        csv.required.set(false)
+        html.required.set(true)
+        html.outputLocation.set(layout.buildDirectory.dir("reports/jacoco"))
     }
 }
 
-jacoco {
-    toolVersion = "0.8.10" // Version actuelle de JaCoCo
-}
-
+// SonarQube (token authentication)
 sonarqube {
     properties {
         property "sonar.projectKey", "TP5"
         property "sonar.host.url", "http://localhost:9000"
         property "sonar.login", "293eb0ec63b776e8dbe00bedc08a2103ad6628db"
+        property "sonar.sources", "src/main/java"
+        property "sonar.tests", "src/test/java"
+        property "sonar.java.binaries", "build/classes"
+        property "sonar.coverage.jacoco.xmlReportPaths", "build/reports/jacoco/test/jacocoTestReport.xml"
     }
 }
 
-jacocoTestReport {
-    dependsOn test // S'assure que les tests sont exécutés avant le rapport
-    reports {
-        xml.required = true
-        csv.required = false
-        html.required = true
-        html.outputLocation = layout.buildDirectory.dir("reports/jacoco")
-    }
-}
-
+// Maven publication
 publishing {
     publications {
         mavenJava(MavenPublication) {
             from components.java
-            groupId = 'BoulachebHichem'
-            artifactId = 'my-library'
+            groupId = 'wael'
+            artifactId = 'wael-library'
             version = '1.0.0'
         }
     }
@@ -92,6 +78,7 @@ publishing {
     }
 }
 
+// Generate Javadoc
 tasks.register('generateDocs', Javadoc) {
     group = 'Documentation'
     description = 'Génère la documentation Java'
@@ -100,6 +87,7 @@ tasks.register('generateDocs', Javadoc) {
     destinationDir = file("$buildDir/docs")
 }
 
+// Slack webhook notification
 slack {
     publishedPlugin {
         webHook = "https://hooks.slack.com/services/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"
@@ -119,8 +107,8 @@ slack {
             }
         }
         attachment {
-            fallback = "Another line on sent together."
-            pretext = "Another line on sent together."
+            fallback = "Another line sent together."
+            pretext = "Another line sent together."
             color = "good"
             field {
                 title = "Something"
@@ -130,31 +118,35 @@ slack {
     }
 }
 
+// Email notification
 sendMail {
     smtpServer {
         host "smtp.gmail.com"
         port 587
-        user "lh_boulacheb@esi.dz"
-        password "vkdw pttl iwsi fugg"
+        user "lw_bouguessa@esi.dz"
+        password "srwe nrpj swfv qvzg"
     }
     mail {
-        from "lh_boulacheb@esi.dz"
+        from "lw_bouguessa@esi.dz"
         to "lh_boulacheb@esi.dz"
         subject = "TP5 Deployment"
         body = "Hello! The library has been deployed."
     }
 }
 
+// Test configuration
 test {
     useJUnit()
+    systemProperty "cucumber.plugin", "json:build/reports/cucumber/cucumber.json"
     finalizedBy jacocoTestReport
 }
 
-
-
-tasks.sonar {
-    dependsOn test
+// Sonar task depends on test + jacoco
+tasks.named('sonar') {
+    dependsOn test, jacocoTestReport
 }
 
+// Publish tasks triggers Slack and email
 publish.finalizedBy(tasks.named("postPublishedPluginToSlack"))
 publish.finalizedBy(tasks.named("sendMail"))
+
