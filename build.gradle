@@ -1,7 +1,7 @@
 plugins {
     id 'java'
     id 'jacoco'
-    id 'org.sonarqube' version '4.4.1.3373'
+    id 'org.sonarqube' version '5.0.0.4638'
     id 'maven-publish'
 }
 
@@ -13,8 +13,9 @@ repositories {
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_11
-    targetCompatibility = JavaVersion.VERSION_11
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(11)
+    }
 }
 
 dependencies {
@@ -24,10 +25,10 @@ dependencies {
 }
 
 /* =========================
-   JaCoCo (FIXED)
+   JaCoCo
    ========================= */
 jacoco {
-    toolVersion = "0.8.10"
+    toolVersion = '0.8.10'
 }
 
 jacocoTestReport {
@@ -36,8 +37,6 @@ jacocoTestReport {
         xml.required.set(true)
         csv.required.set(false)
         html.required.set(true)
-
-        // ✅ FIX: destination → outputLocation
         html.outputLocation.set(
             layout.buildDirectory.dir("reports/jacoco")
         )
@@ -47,7 +46,7 @@ jacocoTestReport {
 /* =========================
    SonarQube
    ========================= */
-sonar {
+sonarqube {
     properties {
         property "sonar.projectKey", "tp"
         property "sonar.projectName", "Jenkins Pipeline"
@@ -68,32 +67,20 @@ publishing {
     publications {
         mavenJava(MavenPublication) {
             from components.java
-            groupId = 'com.example'
-            artifactId = 'my-library'
-            version = '1.0.0'
-        }
-    }
-    repositories {
-        maven {
-            name = "myrepo"
-            url = uri("https://mymavenrepo.com/repo/cEmjfkxugPlzLxXg1A2B/")
-            credentials {
-                username = "myMavenRepo"
-                password = "test0005"
-            }
         }
     }
 }
 
 /* =========================
-   Javadoc
+   Javadoc (FIXED — Gradle 9)
    ========================= */
-javadoc {
+tasks.withType(Javadoc).configureEach {
     source = sourceSets.main.allJava
     classpath = sourceSets.main.compileClasspath
-    destinationDir = file("$buildDir/docs/javadoc")
+    destinationDirectory.set(
+        layout.buildDirectory.dir("docs/javadoc")
+    )
     options.encoding = 'UTF-8'
-    options.charSet = 'UTF-8'
 }
 
 /* =========================
@@ -102,11 +89,10 @@ javadoc {
 test {
     useJUnit()
     finalizedBy jacocoTestReport
-    ignoreFailures = false
 }
 
 /* =========================
-   Sonar depends on coverage
+   Sonar task ordering
    ========================= */
 tasks.named('sonar') {
     dependsOn test, jacocoTestReport

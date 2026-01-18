@@ -83,7 +83,7 @@ pipeline {
            script {
                try {
                    emailext(
-                       to: "mo_nemamcha@esi.dz",
+                       to: "lw_bouguessa@esi.dz",
                        subject: "Pipeline SUCCESS : ${env.JOB_NAME} #${env.BUILD_NUMBER}",
                        body: """
                            <h2>Pipeline exécuté avec succès</h2>
