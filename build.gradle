@@ -1,7 +1,6 @@
 plugins {
     id 'java'
     id 'jacoco'
-    // id 'org.sonarqube' version '4.4.1.3373'
     id 'maven-publish'
 }
 
@@ -48,27 +47,6 @@ jacocoTestReport {
 }
 
 /* =========================
-   SonarQube Configuration
-   ========================= */
-// sonar {
-//     properties {
-//         property "sonar.projectKey", "tp"
-//         property "sonar.projectName", "Jenkins Pipeline"
-//         property "sonar.host.url", "http://localhost:9000"
-//         property "sonar.token", project.findProperty("SONAR_TOKEN") ?: ""
-//         property "sonar.sources", "src/main/java"
-//         property "sonar.tests", "src/test/java"
-//         property "sonar.java.binaries", "build/classes"
-//         property "sonar.coverage.jacoco.xmlReportPaths", "build/reports/jacoco/test/jacocoTestReport.xml"
-//         property "sonar.gradle.skipCompile", "true"
-//     }
-// }
-//
-// tasks.named('sonar') {
-//     dependsOn test, jacocoTestReport
-// }
-
-/* =========================
    Maven Publishing
    ========================= */
 publishing {
@@ -92,13 +70,14 @@ publishing {
     }
 }
 
+
 /* =========================
-   Javadoc (Gradle 8 compatible)
+   Javadoc
    ========================= */
-tasks.withType(Javadoc).configureEach {
+javadoc {
     source = sourceSets.main.allJava
     classpath = sourceSets.main.compileClasspath
-    destinationDirectory.set(layout.buildDirectory.dir("docs/javadoc"))
+    destinationDir = file("$buildDir/docs/javadoc")
     options.encoding = 'UTF-8'
     options.charSet = 'UTF-8'
 }
@@ -109,5 +88,5 @@ tasks.withType(Javadoc).configureEach {
 test {
     useJUnit()
     finalizedBy jacocoTestReport
-    ignoreFailures = false
 }
+

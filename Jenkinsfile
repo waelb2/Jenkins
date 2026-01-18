@@ -19,7 +19,7 @@ pipeline {
         stage('Test') {
             steps {
                 echo "Phase Test : Lancement des tests unitaires"
-                sh './gradlew test'
+                sh './gradlew clean test'
                 echo "Archivage des résultats JUnit"
                 junit allowEmptyResults: true, testResults: 'build/test-results/test/*.xml'
             }
@@ -33,15 +33,15 @@ pipeline {
             }
         }
 
-        // stage('Code Analysis') {
-        //     steps {
-        //         echo "Analyse du code avec SonarQube"
-        //         withSonarQubeEnv('sonar') {
-        //             sh './gradlew sonar'
-        //         }
-        //     }
-        // }
-        //
+        stage('Code Analysis') {
+            steps {
+                echo "Analyse du code avec SonarQube"
+                withSonarQubeEnv('sonar') {
+                    sh './gradlew sonar'
+                }
+            }
+        }
+
         stage('Code Quality') {
             steps {
                 echo "Vérification du Quality Gate"
