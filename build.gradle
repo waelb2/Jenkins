@@ -1,34 +1,31 @@
 plugins {
     id 'java'
-    id "com.github.spacialcircumstances.gradle-cucumber-reporting" version "0.1.25"
-    id "jacoco"
-    id 'org.sonarqube' version '4.4.0.3356'
+    id 'jacoco'
+    id 'org.sonarqube' version '4.4.1.3373'
     id 'maven-publish'
-    id("io.github.oleksiiparf.slack-webhook") version "1.0.0"
-    id("de.zebrajaeger.sendMail") version "0.1.1"
 }
 
 group = 'com.example'
-version = '1.0-Wael'
+version = '1.0-Jenkins'
 
 repositories {
     mavenCentral()
 }
 
+java {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+}
+
 dependencies {
-    testImplementation 'io.cucumber:cucumber-java:6.0.0'
-    testImplementation 'io.cucumber:cucumber-junit:6.0.0'
-    testImplementation 'junit:junit:4.12'
+    testImplementation 'io.cucumber:cucumber-java:7.14.0'
+    testImplementation 'io.cucumber:cucumber-junit:7.14.0'
+    testImplementation 'junit:junit:4.13.2'
 }
 
-// Cucumber reports
-cucumberReports {
-    outputDir = file('build/reports/cucumber/html')
-    buildId = '0'
-    reports = files('build/reports/cucumber/cucumber.json')
-}
-
-// JaCoCo
+/* =========================
+   JaCoCo (FIXED)
+   ========================= */
 jacoco {
     toolVersion = "0.8.10"
 }
@@ -39,30 +36,40 @@ jacocoTestReport {
         xml.required.set(true)
         csv.required.set(false)
         html.required.set(true)
-        html.outputLocation.set(layout.buildDirectory.dir("reports/jacoco"))
+
+        // ✅ FIX: destination → outputLocation
+        html.outputLocation.set(
+            layout.buildDirectory.dir("reports/jacoco")
+        )
     }
 }
 
-// SonarQube (token authentication)
-sonarqube {
+/* =========================
+   SonarQube
+   ========================= */
+sonar {
     properties {
-        property "sonar.projectKey", "TP5"
+        property "sonar.projectKey", "tp"
+        property "sonar.projectName", "Jenkins Pipeline"
         property "sonar.host.url", "http://localhost:9000"
-        property "sonar.login", "293eb0ec63b776e8dbe00bedc08a2103ad6628db"
+        property "sonar.token", project.findProperty("SONAR_TOKEN") ?: ""
         property "sonar.sources", "src/main/java"
         property "sonar.tests", "src/test/java"
-        property "sonar.java.binaries", "build/classes"
-        property "sonar.coverage.jacoco.xmlReportPaths", "build/reports/jacoco/test/jacocoTestReport.xml"
+        property "sonar.java.binaries", "build/classes/java/main"
+        property "sonar.coverage.jacoco.xmlReportPaths",
+                 "build/reports/jacoco/test/jacocoTestReport.xml"
     }
 }
 
-// Maven publication
+/* =========================
+   Maven Publishing
+   ========================= */
 publishing {
     publications {
         mavenJava(MavenPublication) {
             from components.java
-            groupId = 'wael'
-            artifactId = 'wael-library'
+            groupId = 'com.example'
+            artifactId = 'my-library'
             version = '1.0.0'
         }
     }
@@ -78,88 +85,30 @@ publishing {
     }
 }
 
-// Generate Javadoc
-tasks.register('generateDocs', Javadoc) {
-    group = 'Documentation'
-    description = 'Génère la documentation Java'
+/* =========================
+   Javadoc
+   ========================= */
+javadoc {
     source = sourceSets.main.allJava
     classpath = sourceSets.main.compileClasspath
-    destinationDir = file("$buildDir/docs")
+    destinationDir = file("$buildDir/docs/javadoc")
+    options.encoding = 'UTF-8'
+    options.charSet = 'UTF-8'
 }
 
-// Slack webhook notification
-slack {
-    publishedPlugin {
-        // Use environment variable for security
-        webHook = "https://hooks.slack.com/services/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"
-        attachment {
-            fallback = "New version successfully published."
-            pretext = "New version successfully published."
-            color = "good"
-            field {
-                title = "Module"
-                value = project.name
-                shortValue = true
-            }
-            field {
-                title = "Version"
-                value = project.version
-                shortValue = true
-            }
-        }
-        attachment {
-            fallback = "Another line sent together."
-            pretext = "Another line sent together."
-            color = "good"
-            field {
-                title = "Something"
-                value = "Something text"
-            }
-        }
-    }
-}
-
-// Email notification
-sendMail {
-    smtpServer {
-        host "smtp.gmail.com"
-        port 587
-        user System.getenv("EMAIL_USER") ?: "lw_bouguessa@esi.dz"
-        password System.getenv("EMAIL_PASS") ?: "srwe nrpj swfv qvzg"
-    }
-    mail {
-        from System.getenv("EMAIL_USER") ?: "lw_bouguessa@esi.dz"
-        to System.getenv("EMAIL_TO") ?: "lw_bouguessa@esi.dz"
-        subject = "Jenkins Deployment"
-        body = "Hello! The library has been deployed."
-    }
-}
-
-// Test configuration
+/* =========================
+   Tests
+   ========================= */
 test {
     useJUnit()
-    systemProperty "cucumber.plugin", "json:build/reports/cucumber/cucumber.json"
     finalizedBy jacocoTestReport
+    ignoreFailures = false
 }
 
-// Sonar task depends on test + jacoco
+/* =========================
+   Sonar depends on coverage
+   ========================= */
 tasks.named('sonar') {
     dependsOn test, jacocoTestReport
-}
-
-// Run Slack/email after any successful build
-tasks.named("build") {
-    finalizedBy(
-        tasks.named("postPublishedPluginToSlack"),
-        tasks.named("sendMail")
-    )
-}
-
-// Optional: also after publish if you still use it
-tasks.named("publish") {
-    finalizedBy(
-        tasks.named("postPublishedPluginToSlack"),
-        tasks.named("sendMail")
-    )
 }
 
