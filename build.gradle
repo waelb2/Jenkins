@@ -15,9 +15,8 @@ repositories {
    Java Configuration
    ========================= */
 java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(17)
-    }
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
 }
 
 /* =========================
@@ -39,10 +38,10 @@ jacoco {
 jacocoTestReport {
     dependsOn test
     reports {
-        xml.required.set(true)
-        csv.required.set(false)
-        html.required.set(true)
-        html.outputLocation.set(layout.buildDirectory.dir("reports/jacoco"))
+        xml.required = true
+        csv.required = false
+        html.required = true
+        html.destination = file("${buildDir}/reports/jacoco")
     }
 }
 
@@ -70,14 +69,13 @@ publishing {
     }
 }
 
-
 /* =========================
    Javadoc
    ========================= */
 javadoc {
     source = sourceSets.main.allJava
     classpath = sourceSets.main.compileClasspath
-    destinationDir = file("$buildDir/docs/javadoc")
+    destinationDir = file("${buildDir}/docs/javadoc")
     options.encoding = 'UTF-8'
     options.charSet = 'UTF-8'
 }
@@ -89,4 +87,3 @@ test {
     useJUnit()
     finalizedBy jacocoTestReport
 }
-
