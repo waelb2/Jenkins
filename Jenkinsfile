@@ -16,16 +16,16 @@ pipeline {
             }
         }
 
-        stage('Test') {
-            steps {
-                echo "Phase Test : Lancement des tests unitaires"
-                sh './gradlew clean test'
-                echo "Archivage des résultats JUnit"
-                junit allowEmptyResults: true, testResults: 'build/test-results/test/*.xml'
-            }
+stage('Test') {
+    steps {
+        timeout(time: 3, unit: 'MINUTES') {
+            echo "Phase Test : Lancement des tests unitaires"
+            sh './gradlew test --info --stacktrace'
+            echo "Archivage des résultats JUnit"
+            junit allowEmptyResults: true, testResults: 'build/test-results/test/*.xml'
         }
-
-        stage('Generate HTML report') {
+    }
+}        stage('Generate HTML report') {
             steps {
                 cucumber(
                     fileIncludePattern: 'build/reports/cucumber/json-report.json'
