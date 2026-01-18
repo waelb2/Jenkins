@@ -1,21 +1,20 @@
 plugins {
     id 'java'
-    id 'jacoco'
-    id 'org.sonarqube' version '5.0.0.4638'
+    id "jacoco"
+    id 'org.sonarqube' version "4.4.1.3373"
     id 'maven-publish'
 }
 
 group = 'com.example'
-version = '1.0-Jenkins'
+version = '1.0 -Jenkins'
 
 repositories {
     mavenCentral()
 }
 
 java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(11)
-    }
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
 }
 
 dependencies {
@@ -24,29 +23,23 @@ dependencies {
     testImplementation 'junit:junit:4.13.2'
 }
 
-/* =========================
-   JaCoCo
-   ========================= */
+
+
 jacoco {
-    toolVersion = '0.8.10'
+    toolVersion = "0.8.10"
 }
 
 jacocoTestReport {
     dependsOn test
     reports {
-        xml.required.set(true)
-        csv.required.set(false)
-        html.required.set(true)
-        html.outputLocation.set(
-            layout.buildDirectory.dir("reports/jacoco")
-        )
+        xml.required = true
+        csv.required = false
+        html.required = true
+        html.destination = file("${buildDir}/reports/jacoco")
     }
 }
 
-/* =========================
-   SonarQube
-   ========================= */
-sonarqube {
+sonar {
     properties {
         property "sonar.projectKey", "tp"
         property "sonar.projectName", "Jenkins Pipeline"
@@ -54,47 +47,49 @@ sonarqube {
         property "sonar.token", project.findProperty("SONAR_TOKEN") ?: ""
         property "sonar.sources", "src/main/java"
         property "sonar.tests", "src/test/java"
-        property "sonar.java.binaries", "build/classes/java/main"
-        property "sonar.coverage.jacoco.xmlReportPaths",
-                 "build/reports/jacoco/test/jacocoTestReport.xml"
+        property "sonar.java.binaries", "build/classes"
+        property "sonar.coverage.jacoco.xmlReportPaths", "build/reports/jacoco/test/jacocoTestReport.xml"
     }
 }
 
-/* =========================
-   Maven Publishing
-   ========================= */
 publishing {
     publications {
         mavenJava(MavenPublication) {
             from components.java
+            groupId = 'com.example'
+            artifactId = 'my-library'
+            version = '1.0.0'
+        }
+    }
+    repositories {
+        maven {
+            name = "myrepo"
+            url = uri("https://mymavenrepo.com/repo/cEmjfkxugPlzLxXg1A2B/")
+            credentials {
+                username = "myMavenRepo"
+                password =  "test0005"
+            }
         }
     }
 }
 
-/* =========================
-   Javadoc (FIXED — Gradle 9)
-   ========================= */
-tasks.withType(Javadoc).configureEach {
+javadoc {
     source = sourceSets.main.allJava
     classpath = sourceSets.main.compileClasspath
-    destinationDirectory.set(
-        layout.buildDirectory.dir("docs/javadoc")
-    )
+    destinationDir = file("$buildDir/docs/javadoc")
     options.encoding = 'UTF-8'
+    options.charSet = 'UTF-8'
 }
 
-/* =========================
-   Tests
-   ========================= */
 test {
     useJUnit()
+
+
     finalizedBy jacocoTestReport
+
+    ignoreFailures = false
 }
 
-/* =========================
-   Sonar task ordering
-   ========================= */
 tasks.named('sonar') {
     dependsOn test, jacocoTestReport
 }
-
