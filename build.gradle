@@ -71,9 +71,6 @@ publishing {
 }
 
 
-/* =========================
-   Javadoc
-   ========================= */
 javadoc {
     source = sourceSets.main.allJava
     classpath = sourceSets.main.compileClasspath
