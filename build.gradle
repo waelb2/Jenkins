@@ -70,13 +70,14 @@ publishing {
     }
 }
 
+
 /* =========================
-   Javadoc (Gradle 9 compatible)
+   Javadoc
    ========================= */
-tasks.withType(Javadoc).configureEach {
+javadoc {
     source = sourceSets.main.allJava
     classpath = sourceSets.main.compileClasspath
-    destinationDirectory.set(layout.buildDirectory.dir("docs/javadoc"))
+    destinationDir = file("$buildDir/docs/javadoc")
     options.encoding = 'UTF-8'
     options.charSet = 'UTF-8'
 }
