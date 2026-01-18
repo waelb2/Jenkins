@@ -1,7 +1,7 @@
 plugins {
     id 'java'
     id 'jacoco'
-    id "org.sonarqube" version "5.5.0.2841" // ✅ Gradle 9 compatible
+    id "org.sonarqube" version "4.4.1.3373"
     id 'maven-publish'
 }
 
@@ -51,7 +51,6 @@ jacocoTestReport {
    SonarQube
    ========================= */
 sonarqube {
-    dependsOn jacocoTestReport // ✅ Ensure coverage is generated first
     properties {
         property "sonar.projectKey", "tp"
         property "sonar.projectName", "Jenkins Pipeline"
@@ -63,6 +62,11 @@ sonarqube {
         property "sonar.coverage.jacoco.xmlReportPaths",
                  "build/reports/jacoco/test/jacocoTestReport.xml"
     }
+}
+
+// ✅ Ensure sonar task runs after tests and coverage
+tasks.named('sonar') {
+    dependsOn test, jacocoTestReport
 }
 
 /* =========================
@@ -106,9 +110,4 @@ test {
     useJUnit()
     finalizedBy jacocoTestReport
 }
-
-/* =========================
-   Optional: Sonar depends on test + JaCoCo
-   ========================= */
-// No need for tasks.named('sonar') anymore; handled by plugin
 

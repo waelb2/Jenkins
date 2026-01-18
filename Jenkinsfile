@@ -117,7 +117,7 @@ pipeline {
                // EMAIL
                try {
                    emailext(
-                       to: "mo_nemamcha@esi.dz",
+                       to: "lw_bouguessa@esi.dz",
                        subject: "Pipeline FAILURE : ${env.JOB_NAME} #${env.BUILD_NUMBER}",
                        body: """
                            <h2>Pipeline échoué</h2>

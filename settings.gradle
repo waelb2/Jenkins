@@ -1,6 +1,7 @@
 pluginManagement {
     repositories {
         gradlePluginPortal()
-        mavenCentral()   // <-- add this to resolve Sonar plugin 4.5+
+        mavenCentral()
     }
 }
+
