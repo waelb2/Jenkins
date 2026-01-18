@@ -74,7 +74,7 @@ publishing {
    Javadoc (Gradle 9 compatible)
    ========================= */
 
-tasks.withType(Javadoc>()).configureEach {
+tasks.withType(Javadoc()).configureEach {
     source = sourceSets.main.get().allJava
     classpath = sourceSets.main.get().compileClasspath
     destinationDirectory.set(layout.buildDirectory.dir("docs/javadoc")) // ✅ correct syntax
