@@ -33,7 +33,6 @@ pipeline {
             }
         }
 
-        /*
         stage('Code Analysis') {
             steps {
                 echo "Analyse du code avec SonarQube"
@@ -51,7 +50,6 @@ pipeline {
                 }
             }
         }
-        */
 
         stage('Build') {
             steps {
