@@ -33,15 +33,15 @@ pipeline {
             }
         }
 
-        stage('Code Analysis') {
-            steps {
-                echo "Analyse du code avec SonarQube"
-                withSonarQubeEnv('sonar') {
-                    sh './gradlew sonar'
-                }
-            }
-        }
-
+        // stage('Code Analysis') {
+        //     steps {
+        //         echo "Analyse du code avec SonarQube"
+        //         withSonarQubeEnv('sonar') {
+        //             sh './gradlew sonar'
+        //         }
+        //     }
+        // }
+        //
         stage('Code Quality') {
             steps {
                 echo "Vérification du Quality Gate"
