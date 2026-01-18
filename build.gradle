@@ -1,7 +1,6 @@
 plugins {
     id 'java'
     id 'jacoco'
-//    id "org.sonarqube" version "4.4.1.3373"
     id 'maven-publish'
 }
 
@@ -17,7 +16,7 @@ repositories {
    ========================= */
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(17) // ✅ Use Java 17
+        languageVersion = JavaLanguageVersion.of(17)
     }
 }
 
@@ -48,28 +47,6 @@ jacocoTestReport {
 }
 
 /* =========================
-   SonarQube
-   ========================= */
-/*sonarqube {
-    properties {
-        property "sonar.projectKey", "tp"
-        property "sonar.projectName", "Jenkins Pipeline"
-        property "sonar.host.url", "http://localhost:9000"
-        property "sonar.token", project.findProperty("SONAR_TOKEN") ?: ""
-        property "sonar.sources", "src/main/java"
-        property "sonar.tests", "src/test/java"
-        property "sonar.java.binaries", "build/classes/java/main"
-        property "sonar.coverage.jacoco.xmlReportPaths",
-                 "build/reports/jacoco/test/jacocoTestReport.xml"
-    }
-}
-
-
-tasks.named('sonar') {
-    dependsOn test, jacocoTestReport
-}
-*/
-/* =========================
    Maven Publishing
    ========================= */
 publishing {
@@ -94,12 +71,12 @@ publishing {
 }
 
 /* =========================
-   Javadoc
+   Javadoc (Gradle 9 compatible)
    ========================= */
-tasks.withType(Javadoc).configureEach {
-    source = sourceSets.main.allJava
-    classpath = sourceSets.main.compileClasspath
-    destinationDirectory.set(layout.buildDirectory.dir("docs/javadoc"))
+tasks.withType(Javadoc>().configureEach {
+    source = sourceSets.main.get().allJava
+    classpath = sourceSets.main.get().compileClasspath
+    destinationDirectory.set(layout.buildDirectory.dir("docs/javadoc")) // ✅ correct syntax
     options.encoding = 'UTF-8'
 }
 
