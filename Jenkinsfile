@@ -19,7 +19,7 @@ pipeline {
         stage('Test') {
             steps {
                 echo "Phase Test : Lancement des tests unitaires"
-                sh './gradlew clean test'
+                sh './gradlew test'
                 echo "Archivage des résultats JUnit"
                 junit allowEmptyResults: true, testResults: 'build/test-results/test/*.xml'
             }
