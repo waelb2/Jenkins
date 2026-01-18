@@ -1,7 +1,7 @@
 plugins {
     id 'java'
     id 'jacoco'
-    id 'org.sonarqube' version '5.0.0.4638'
+    id "org.sonarqube" version "5.5.0.2841" // ✅ Gradle 9 compatible
     id 'maven-publish'
 }
 
@@ -12,13 +12,18 @@ repositories {
     mavenCentral()
 }
 
+/* =========================
+   Java Configuration
+   ========================= */
 java {
     toolchain {
-        // ✅ Change to 17
-        languageVersion = JavaLanguageVersion.of(17)
+        languageVersion = JavaLanguageVersion.of(17) // ✅ Use Java 17
     }
 }
 
+/* =========================
+   Dependencies
+   ========================= */
 dependencies {
     testImplementation 'io.cucumber:cucumber-java:7.14.0'
     testImplementation 'io.cucumber:cucumber-junit:7.14.0'
@@ -38,9 +43,7 @@ jacocoTestReport {
         xml.required.set(true)
         csv.required.set(false)
         html.required.set(true)
-        html.outputLocation.set(
-            layout.buildDirectory.dir("reports/jacoco")
-        )
+        html.outputLocation.set(layout.buildDirectory.dir("reports/jacoco"))
     }
 }
 
@@ -48,6 +51,7 @@ jacocoTestReport {
    SonarQube
    ========================= */
 sonarqube {
+    dependsOn jacocoTestReport // ✅ Ensure coverage is generated first
     properties {
         property "sonar.projectKey", "tp"
         property "sonar.projectName", "Jenkins Pipeline"
@@ -68,19 +72,30 @@ publishing {
     publications {
         mavenJava(MavenPublication) {
             from components.java
+            groupId = 'com.example'
+            artifactId = 'my-library'
+            version = '1.0.0'
+        }
+    }
+    repositories {
+        maven {
+            name = "myrepo"
+            url = uri("https://mymavenrepo.com/repo/cEmjfkxugPlzLxXg1A2B/")
+            credentials {
+                username = "myMavenRepo"
+                password = "test0005"
+            }
         }
     }
 }
 
 /* =========================
-   Javadoc (Gradle 9 safe)
+   Javadoc
    ========================= */
 tasks.withType(Javadoc).configureEach {
     source = sourceSets.main.allJava
     classpath = sourceSets.main.compileClasspath
-    destinationDirectory.set(
-        layout.buildDirectory.dir("docs/javadoc")
-    )
+    destinationDirectory.set(layout.buildDirectory.dir("docs/javadoc"))
     options.encoding = 'UTF-8'
 }
 
@@ -93,9 +108,7 @@ test {
 }
 
 /* =========================
-   Sonar task ordering
+   Optional: Sonar depends on test + JaCoCo
    ========================= */
-tasks.named('sonar') {
-    dependsOn test, jacocoTestReport
-}
+// No need for tasks.named('sonar') anymore; handled by plugin
 
