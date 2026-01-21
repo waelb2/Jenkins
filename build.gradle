@@ -1,6 +1,6 @@
 plugins {
     id 'java'
-    id 'jacoco'
+//    id 'jacoco'
     id 'maven-publish'
     id 'org.sonarqube' version '5.0.0.4638'
 }
@@ -37,25 +37,23 @@ jacoco {
 }
 
 
-jacocoTestReport {
-    dependsOn test
-    reports {
-        xml.required = true
-        html.required = true
-    }
-}
-
-
-// sonar {
-//     properties {
-//         property "sonar.projectKey", "tp-jenkins"
-//         property "sonar.projectName", "TP Jenkins"
-//         property "sonar.host.url", "http://localhost:9000"
-//         property "sonar.java.binaries", "build"
-//         property "sonar.coverage.jacoco.xmlReportPaths",
-//                  "${buildDir}/reports/jacoco/test/jacocoTestReport.xml"
+// jacocoTestReport {
+//     dependsOn test
+//     reports {
+//         xml.required = true
+//         html.required = true
 //     }
 // }
+
+
+sonar {
+    properties {
+        property "sonar.projectKey", "tp-jenkins"
+        property "sonar.projectName", "TP Jenkins"
+        property "sonar.host.url", "http://localhost:9000"
+        property "sonar.java.binaries", "build"
+    }
+}
 
 /* =========================
    Maven Publishing
