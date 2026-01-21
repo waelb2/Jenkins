@@ -37,7 +37,7 @@ pipeline {
 stage('Code Analysis') {
     steps {
         withSonarQubeEnv('sonar') {
-            withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+            withCredentials([string(credentialsId: 'SONAR_TOKEN', variable: 'SONAR_TOKEN')]) {
                 sh '''
                     ./gradlew clean test sonar \
                       -Dsonar.login=$SONAR_TOKEN
