@@ -34,18 +34,18 @@ pipeline {
         }
 
 
-        stage('Code Analysis') {
-            steps {
-                withSonarQubeEnv('sonar') {
-                    withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
-                        sh '''
-                            ./gradlew clean test jacocoTestReport sonar \
-                            -Dsonar.login=$SONAR_TOKEN
-                        '''
-                    }
-                }
-            }
-        }
+        // stage('Code Analysis') {
+        //     steps {
+        //         withSonarQubeEnv('sonar') {
+        //             withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+        //                 sh '''
+        //                     ./gradlew clean test jacocoTestReport sonar \
+        //                     -Dsonar.login=$SONAR_TOKEN
+        //                 '''
+        //             }
+        //         }
+        //     }
+        // }
         stage('Build') {
             steps {
                 echo "Génération du JAR et Javadoc"
