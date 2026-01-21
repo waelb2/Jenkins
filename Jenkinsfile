@@ -34,7 +34,6 @@ pipeline {
         }
 
 
-
 stage('Code Analysis') {
     steps {
         withSonarQubeEnv('sonar') {
@@ -47,6 +46,7 @@ stage('Code Analysis') {
         }
     }
 }
+
         stage('Build') {
             steps {
                 echo "Génération du JAR et Javadoc"
