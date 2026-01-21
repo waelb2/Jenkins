@@ -33,24 +33,19 @@ pipeline {
             }
         }
 
-        // stage('Code Analysis') {
-        //     steps {
-        //         echo "Analyse du code avec SonarQube"
-        //         withSonarQubeEnv('sonar') {
-        //             sh './gradlew sonar'
-        //         }
-        //     }
-        // }
-        //
-        // stage('Code Quality') {
-        //     steps {
-        //         echo "Vérification du Quality Gate"
-        //         timeout(time: 2, unit: 'MINUTES') {
-        //             waitForQualityGate abortPipeline: true
-        //         }
-        //     }
-        // }
-        //
+
+        stage('Code Analysis') {
+            steps {
+                withSonarQubeEnv('sonar') {
+                    withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+                        sh '''
+                            ./gradlew clean test jacocoTestReport sonar \
+                            -Dsonar.login=$SONAR_TOKEN
+                        '''
+                    }
+                }
+            }
+        }
         stage('Build') {
             steps {
                 echo "Génération du JAR et Javadoc"
